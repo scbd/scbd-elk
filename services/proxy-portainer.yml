@@ -1,0 +1,66 @@
+﻿version: '3'
+services:
+  traefik:
+    image: traefik # The official Traefik docker image
+    command: >    
+      --api 
+      --docker
+      --docker.swarmMode
+      --docker.domain=traefik
+      --docker.watch
+      --docker.exposedbydefault=false
+      --web=true
+      --acme
+      --acme.email=it@cbd.int
+      --acme.onhostrule=true
+      --acme.storage=/etc/traefik/acme.json
+      --acme.entryPoint=https
+      --defaultentrypoints="http,https"
+      # --entryPoints="Name:httpLogSSL Address::8071 TLS"httpLogSSL,
+      --entryPoints="Name:http  Address::80  Redirect.EntryPoint:https"
+      --entryPoints="Name:https Address::443 TLS"
+      --acme.httpchallenge=true
+      --acme.httpchallenge.entrypoint=https
+      --accesslogsfile=/dev/stdout
+      --logLevel=DEBUG
+    ports:
+      - "80:80"     # The HTTP port
+      - "443:443"   # The HTTPS port todo
+      - "8080:8080" # The Web UI (enabled by --api)
+      # - "8071:8071" #Docker-logs https port      
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock #So that Traefik can listen to the Docker events
+      - traefik-data:/etc/traefik   
+    networks:
+      - elk
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: 250M
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 5s
+
+  manage:
+    image: portainer/portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    networks:
+      - elk
+
+volumes:
+  portainer-data:
+  traefik-data:
+
+networks:
+  elk:
+    external: true

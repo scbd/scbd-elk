@@ -1,0 +1,48 @@
+﻿version: '3'
+services:  
+  elasticsearch:
+    image: scbd/elastic-search
+    env_file:
+      - ../.env
+    volumes:
+        - ${HOME}/elasticsearch/data:/usr/share/elasticsearch/data
+        - ${HOME}/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+    ports:
+      - "9200:9200"
+    environment:
+      ES_JAVA_OPTS: "-Xmx1024m -Xms256m"
+    networks:
+      - elk    
+    deploy:
+      mode: global
+
+  kibana:
+    image: scbd/kibana
+    env_file:
+      - ../.env
+    volumes:
+      - ${HOME}/kibana/config/:/usr/share/kibana/config
+      - ${HOME}/kibana/optimize/:/usr/share/kibana/optimize
+      - ${HOME}/kibana/plugins/logtrail/config.json:/usr/share/kibana/plugins/logtrail/logtrail.json
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: 1500m  
+      labels:
+        - "traefik.frontend.rule=Host:logs.infra.cbd.int"
+        - "traefik.port=5601"
+        - "traefik.enable=true"
+        - "traefik.docker.network=elk"
+        - "traefik.backend=kibana"
+        - "traefik.backend.loadbalancer.swarm=true"
+   
+networks:
+  elk:
+    external: true

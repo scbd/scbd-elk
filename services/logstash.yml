@@ -1,0 +1,33 @@
+﻿version: '3'
+services:
+  docker_logs:
+    image: scbd/logstash
+    env_file:
+      - ../.env
+    volumes:
+      - ${HOME}/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ${HOME}/logstash/pipeline/docker-logs.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ${HOME}/elasticsearch/logstash-template.json:/etc/logstash/templates/logstash-template.json
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    ports:
+      - "1985:1985"
+      - "9600:9600"
+    deploy:
+      mode: global
+      labels:
+        - "traefik.entryPoints=https"
+        - "traefik.backend=docker_logs"
+        - "traefik.backend.loadbalancer.swarm=true"
+        - "traefik.frontend.rule=Host:logs.infra.cbd.int; PathPrefix:/index"
+        - "traefik.port=1985"
+        - "traefik.enable=true"
+        - "traefik.docker.network=elk"
+        # Query:docker-logs=true;PathPrefix:/docker-logs
+networks:
+  elk:
+    external: true
